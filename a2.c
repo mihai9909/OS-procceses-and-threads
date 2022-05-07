@@ -17,6 +17,8 @@ int sem_t10_p8;
 pthread_mutex_t lock;
 pthread_cond_t cond;
 
+void* execThreadP5(void* threadNb);
+
 void P(int semID, int semNr){
     struct sembuf op = {semNr,-1,0};
     semop(semID,&op,1);
@@ -38,6 +40,22 @@ void* execThreadP7(void* threadNb)
     //*number = atoi(tmp);
 
     info(END,7,*(int*)threadNb);
+        // if(*(int*)threadNb == 1){
+        //     pthread_cond_signal(&cond);
+        // }
+
+    return threadNb;
+}
+
+void* execThreadP5(void* threadNb)
+{
+    // if(*(int*)threadNb == 4){
+    //     pthread_mutex_lock(&lock);
+    //     pthread_cond_wait(&cond,&lock);    
+    //     pthread_mutex_unlock(&lock);
+    // }
+    info(BEGIN,5,*(int*)threadNb);
+    info(END,5,*(int*)threadNb);
     
     return threadNb;
 }
@@ -103,9 +121,20 @@ int main(){
                 {
                 case 0: // child process (P5)
                     info(BEGIN,5,0);
+
+                    pthread_mutex_init(&lock,NULL);
+                    pthread_cond_init(&cond,NULL);
+
+                    pthread_t t[6];
+                        
+                    int threadNb[6] = {1,2,3,4,5,6};
+
+                    pthread_create(&t[4],NULL,execThreadP5,&threadNb[4]);
+                    pthread_join(t[4],NULL);
+
                     pid7 = fork();
                     switch(pid7){
-                    case 0:
+                    case 0: // child process (P7)
                         info(BEGIN,7,0);
                         
                         pthread_t t[5];
@@ -134,6 +163,23 @@ int main(){
                         waitpid(pid7,NULL,0);
                         break;
                     }
+
+
+                    for(int i = 0;i < 6;i++){
+                        if(threadNb[i]==5)
+                            continue;
+                        pthread_create(&t[i], NULL, execThreadP5, &threadNb[i]);
+                    }
+
+                    for(int i = 0;i < 6;i++){
+                        if(threadNb[i]==5)
+                            continue;
+                        pthread_join(t[i],NULL);
+                    }
+                    
+                    pthread_mutex_destroy(&lock);
+                    pthread_cond_destroy(&cond);
+
                     info(END,5,0);
                     return 0;
                 default:
@@ -194,9 +240,6 @@ int main(){
                         for(int i = 0;i < 36;i++){
                             pthread_join(t[i],NULL);
                         }
-
-                        pthread_mutex_destroy(&lock);
-                        pthread_cond_destroy(&cond);
 
                         info(END,8,0);
                         return 0;
